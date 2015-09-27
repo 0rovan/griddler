@@ -1,19 +1,62 @@
+"""
+griddler - not sure yet
+Copyright (C) 2015 0rovan
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""
 import tkinter as tk
 from os.path import dirname
 
 
-class Hint(tk.Label):
+class Hint(tk.Frame):
     def __init__(self,master,pos):
-        tk.Label.__init__(self,master,text='0')
+        tk.Frame.__init__(self,master,background='black')
         self.pos=pos
-        self.grid(column=pos[0],row=pos[1],pady=1,padx=1)
+        glue='E' if pos[1] else 'S'
+        self.grid(column=pos[0],row=pos[1],sticky=glue)
         self.cells=[]
-    def doStuff(self):
-        self.config(text='1')
-        self.after(500,lambda:self.config(text='0'))
+        tk.Label(self,text='0',font='Mono 9',width=2).grid(padx=1,pady=1)
+    def recount(self):
         values=[]
         count=0
-        
+        for cell in self.cells:
+            if cell.status:
+                count+=1
+            elif count:
+                values.append(count)
+                count=0
+        if count:
+            values.append(count)
+        if not values:
+            values=[0]
+        for child in self.winfo_children():
+            child.destroy()
+        count=0
+        for value in values:
+            if self.pos[1]:
+                x=count
+                y=0
+                padx=1
+                pady=0
+            else:
+                x=0
+                y=count
+                padx=0
+                pady=1
+            tk.Label(self,text=str(value),font='Mono 9',width=2).grid(column=x,row=y,pady=pady,padx=padx)
+            count+=1
 
 
 class Cell(tk.Label):
@@ -38,7 +81,7 @@ class Cell(tk.Label):
         else:
             self.on()
         for hint in self.hints:
-            hint.doStuff()
+            hint.recount()
 
 class GameGrid(tk.Frame):
     def __init__(self,master,size):
@@ -57,7 +100,7 @@ class App(tk.Frame):
     def __init__(self):
         tk.Frame.__init__(self)
         self.grid()
-        self.master.geometry('400x250')
+        self.master.geometry('500x350')
         self.master.title('Griddler')
         GameGrid(self,(15,10)).grid(sticky='W')
 
