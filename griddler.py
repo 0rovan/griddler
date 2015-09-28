@@ -21,6 +21,7 @@ import tkinter as tk
 from os.path import dirname
 
 
+# contains row or column content (cells) and can manipulate those
 class Hint(tk.Frame):
 
     def __init__(self,master,pos):
@@ -31,6 +32,7 @@ class Hint(tk.Frame):
         self.cells=[]
         tk.Label(self,text='0',font='Mono 9',width=2).grid(padx=1,pady=1)
 
+    #get values from cells and return as array
     def count(self):
         values=[]
         count=0
@@ -44,6 +46,7 @@ class Hint(tk.Frame):
             values.append(count)
         return values if values else [0]
 
+    #update clues from array
     def update(self,values):
         for child in self.winfo_children():
             child.destroy()
@@ -63,6 +66,7 @@ class Hint(tk.Frame):
             pos+=1
 
 
+#cell in field
 class Cell(tk.Label):
 
     def __init__(self,master,hints):
@@ -72,20 +76,24 @@ class Cell(tk.Label):
             hint.cells.append(self)
         self.status=None
         self.swithState(None,0)
-        self.bind('<Button-1>',lambda e:self.swithState(e,1))
-        self.bind('<Button-3>',lambda e:self.swithState(e,0))
+        self.bind('<Button-1>',lambda e:self.swithState(e,1)) #LMB
+        self.bind('<Button-3>',lambda e:self.swithState(e,2)) #RMB
+        self.bind('<Button-2>',lambda e:self.swithState(e,0)) #MMB
         self.config(border=0)
         self.grid(column=hints[0].pos[0],row=hints[1].pos[1],pady=1,padx=1)
 
-
-    def swithState(self,event,color=1):
+    #change state and color
+    def swithState(self,event,color):
         if color!=self.status:
-            self.status=color
             self.config(bitmap='@'+dirname(__file__)+'/'+str(color)+'.xbm')
-            for hint in self.hints:
-                hint.update(hint.count())
+            if color==1 or self.status==1:
+                self.status=color
+                if not self.master.lock:
+                    for hint in self.hints:
+                        hint.update(hint.count())
 
 
+#this is grid. it contains hints in two arrays
 class GameGrid(tk.Frame):
 
     def __init__(self,master,size):
@@ -93,6 +101,7 @@ class GameGrid(tk.Frame):
         self.grid()
         self.columns=[]
         self.rows=[]
+        self.lock=False
         for x in range(size[0]):
             self.columns.append(Hint(self,(x+1,0)))
         for y in range(size[1]):
@@ -101,7 +110,10 @@ class GameGrid(tk.Frame):
             for x in range(size[0]):
                 Cell(self,(self.columns[x],row))
 
+
+#main
 class App(tk.Frame):
+
     def __init__(self):
         tk.Frame.__init__(self)
         self.grid()
@@ -110,17 +122,19 @@ class App(tk.Frame):
         tk.Label(self,text='Griddler',font='Mono 15 bold').grid(pady=20,row=1,column=1,columnspan=2)
         buttons=tk.Frame(self)
         buttons.grid(column=2,row=2,rowspan=2,padx=10)
-        tk.Button(buttons,width=12,text='Blank',command=lambda:self.blank((10,10))).grid()
+        tk.Button(buttons,width=12,text='Blank',command=lambda:self.blank((10,10))).grid() #add size selection
         tk.Button(buttons,width=12,text='Export hints',command=self.exportHints).grid()
         tk.Button(buttons,width=12,text='Import hints',command=self.importHints).grid()
         self.grid=None
 
+    #set new grid from given size
     def blank(self,size):
         if self.grid:
             self.grid.destroy()
         self.grid=GameGrid(self,size)
         self.grid.grid(row=2,column=1,padx=20)
 
+    #export hints into file
     def exportHints(self):
         out=str(len(self.grid.columns))+'x'+str(len(self.grid.rows))+'\n'
         for hint in self.grid.columns+self.grid.rows:
@@ -130,11 +144,10 @@ class App(tk.Frame):
             return True
         return False
 
+    #re/create grid if needed and import hints from file
     def importHints(self):
-        with open(PATH+'/hints.txt','r') as file:
-            size=file.readline()[:-1].split('x')
-            size[0]=int(size[0])
-            size[1]=int(size[1])
+        with open(dirname(__file__)+'/hints.txt','r') as file: #add checks for file existence and validity
+            size=[int(i) for i in file.readline()[:-1].split('x')]
             data=file.readlines()
             if not self.grid:
                 self.blank((size[0],size[1]))
@@ -149,6 +162,7 @@ class App(tk.Frame):
             for values in data[size[0]:]:
                 self.grid.rows[i].update(values[:-1].split(','))
                 i+=1
+            self.grid.lock=True
 
 
 
